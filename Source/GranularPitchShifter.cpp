@@ -110,7 +110,6 @@ float GranularPitchShifter::processOutputBuffers(float modulation_smpls, bool tr
         sumOut = ANALOG_POST_DEL_LOOP_GAIN * psBandpass.processSample(sumOut);
     }
     sumOut = fdbkLpf.processSample(sumOut);
-    // sumOut = fdbkHpf.processSample(sumOut);
     
     modulationBuffer.writeBuffer(sumOut);
     
@@ -135,10 +134,10 @@ float GranularPitchShifter::processPostDelay(float x, float modulation_smpls)
     return y;
 }
 
-float GranularPitchShifter::processSample(float x, float modulation, bool triggerStrech)
+float GranularPitchShifter::processSample(float x, float modulation_smpls, bool triggerStrech)
 {
-    auto outputBuffersOut = processOutputBuffers(modulation, triggerStrech);
-    auto y = processPostDelay(outputBuffersOut, modulation);
+    auto outputBuffersOut = processOutputBuffers(modulation_smpls, triggerStrech);
+    auto y = processPostDelay(outputBuffersOut, modulation_smpls);
     
     writeInputBuffer(x, fdbkHpf.processSample(outputBuffersOut));
     
