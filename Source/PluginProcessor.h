@@ -116,7 +116,7 @@ public:
         
             ps1PitchShift(addToLayout(layout, std::make_unique<Parameter>(paramID::ps1PitchShift, "Pitch Shift", "", NormalisableRange<float>(-12.0f, 12.0f, 1.0f), 0.0f, valueToTextFunction, textToValueFunction))),
             ps1FineTune(addToLayout(layout, std::make_unique<Parameter>(paramID::ps1FineTune, "Fine Tune", "", NormalisableRange<float>(-100.0f, 100.0f, 1.0f), 0.0f, valueToTextFunction, textToValueFunction))),
-            ps1GrainSize(addToLayout(layout, std::make_unique<Parameter>(paramID::ps1GrainSize, "Grain Size", "ms", NormalisableRange<float>(5.0f, 1000.0f, 1.0f), 50.0f, valueToTextFunction, textToValueFunction))),
+            ps1GrainSize(addToLayout(layout, std::make_unique<Parameter>(paramID::ps1GrainSize, "Grain Size", "ms", NormalisableRange<float>(1.0f, 1000.0f, 1.0f), 50.0f, valueToTextFunction, textToValueFunction))),
             ps1Texture(addToLayout(layout, std::make_unique<Parameter>(paramID::ps1Texture, "Texture", "", NormalisableRange<float>(0.0f, 1.0f), 0.5f, valueToTextFunction, textToValueFunction))),
             ps1Strech(addToLayout(layout, std::make_unique<Parameter>(paramID::ps1Strech, "Strech", "", NormalisableRange<float>(1.0f, 4.0f, 1.0f), 1.0f, valueToTextFunction, textToValueFunction))),
             ps1Feedback(addToLayout(layout, std::make_unique<Parameter>(paramID::ps1Feedback, "Feedback", "%", NormalisableRange<float>(0.0f, 100.0f), 0.0f, valueToTextFunction, textToValueFunction))),
@@ -127,7 +127,7 @@ public:
         
             ps2PitchShift(addToLayout(layout, std::make_unique<Parameter>(paramID::ps2PitchShift, "Pitch Shift", "", NormalisableRange<float>(-12.0f, 12.0f, 1.0f), 0.0f, valueToTextFunction, textToValueFunction))),
             ps2FineTune(addToLayout(layout, std::make_unique<Parameter>(paramID::ps2FineTune, "Fine Tune", "", NormalisableRange<float>(-100.0f, 100.0f, 1.0f), 0.0f, valueToTextFunction, textToValueFunction))),
-            ps2GrainSize(addToLayout(layout, std::make_unique<Parameter>(paramID::ps2GrainSize, "Grain Size", "ms", NormalisableRange<float>(5.0f, 1000.0f, 1.0f), 50.0f, valueToTextFunction, textToValueFunction))),
+            ps2GrainSize(addToLayout(layout, std::make_unique<Parameter>(paramID::ps2GrainSize, "Grain Size", "ms", NormalisableRange<float>(1.0f, 1000.0f, 1.0f), 50.0f, valueToTextFunction, textToValueFunction))),
             ps2Texture(addToLayout(layout, std::make_unique<Parameter>(paramID::ps2Texture, "Texture", "", NormalisableRange<float>(0.0f, 1.0f), 0.5f, valueToTextFunction, textToValueFunction))),
             ps2Strech(addToLayout(layout, std::make_unique<Parameter>(paramID::ps2Strech, "Strech", "", NormalisableRange<float>(1.0f, 4.0f, 1.0f), 1.0f, valueToTextFunction, textToValueFunction))),
             ps2Feedback(addToLayout(layout, std::make_unique<Parameter>(paramID::ps2Feedback, "Feedback", "%", NormalisableRange<float>(0.0f, 100.0f), 0.0f, valueToTextFunction, textToValueFunction))),

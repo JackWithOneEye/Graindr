@@ -44,15 +44,18 @@ public:
         return buffer[readIndex];
     }
     
-    float readBuffer(float delayInFractionalSamples)
+    float readBuffer(float delayInFractionalSamples, bool linearInterpolation = false)
     {
         float fraction = delayInFractionalSamples - (int) delayInFractionalSamples;
         
-        float y0 = readBuffer((int) delayInFractionalSamples - 1);
         float y1 = readBuffer((int) delayInFractionalSamples);
         float y2 = readBuffer((int) delayInFractionalSamples + 1);
+        
+        if (linearInterpolation)
+            return (1.0f - fraction) * y1 + fraction * y2;
+        
+        float y0 = readBuffer((int) delayInFractionalSamples - 1);
         float y3 = readBuffer((int) delayInFractionalSamples + 2);
-
         return cubicInterpolation(y0, y1, y2, y3, fraction);
     }
 
@@ -63,7 +66,6 @@ private:
     unsigned int writeIndex = 0;
     unsigned int bufferLength = 1024;
     unsigned int wrapMask = 1023;
-    // bool interpolate = false;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CircularBuffer)
 };

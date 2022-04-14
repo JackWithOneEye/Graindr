@@ -8,7 +8,7 @@ void GranularPitchShifter::processBlock(float *buffer, const int numSamples)
     }
 }
 
-float GranularPitchShifter::processOutputBuffers(float modulation, bool triggerStrech)
+float GranularPitchShifter::processOutputBuffers(float modulation_smpls, bool triggerStrech)
 {
     auto pFactor = pitchShiftFactor.getNextValue();
     auto ftFactor = fineTuneFactor.getNextValue();
@@ -17,7 +17,7 @@ float GranularPitchShifter::processOutputBuffers(float modulation, bool triggerS
     currentOutputSize = (int) (grainSize_smpls.getNextValue());
     currentInputSize = static_cast<float>(currentOutputSize) * totalPitchFactor;
     
-    auto txt = jlimit(0.0f, 1.0f, texture.getNextValue() + modulation);
+    auto txt = texture.getNextValue();
     int overlapWidth = (int) (currentOutputSize * txt * 0.5f);
     int stride = currentOutputSize - overlapWidth - 1;
     
@@ -47,7 +47,7 @@ float GranularPitchShifter::processOutputBuffers(float modulation, bool triggerS
             output1ReadIdx = 0;
             output1ReadOffset = 0;
             output2ReadOffset = currentOutputSize;
-            auto writeIdx = outputBuffer1.getWriteIndex();
+            auto writeIdx = outputBuffer.getWriteIndex();
             if (output1TriggerStretchOnNext || (writeIdx > 0 && writeIdx < currentOutputSize))
             {
                 output1StretchMultiplier = 1;
@@ -64,7 +64,7 @@ float GranularPitchShifter::processOutputBuffers(float modulation, bool triggerS
             output2ReadIdx = 0;
             output2ReadOffset = 0;
             output1ReadOffset = currentOutputSize;
-            auto writeIdx = outputBuffer2.getWriteIndex();
+            auto writeIdx = outputBuffer.getWriteIndex();
             if (output2TriggerStretchOnNext || (writeIdx > 0 && writeIdx < currentOutputSize))
             {
                 output2StretchMultiplier = 1;
@@ -84,8 +84,8 @@ float GranularPitchShifter::processOutputBuffers(float modulation, bool triggerS
     {
         auto win = windowFunc(output1ReadIdx, currentOutputSize, overlapWidth);
         auto grainStart = output1StretchMultiplier * currentOutputSize + output1ReadOffset;
-        o1OutRev = outputBuffer1.readBuffer(grainStart - currentOutputSize + output1ReadIdx + 1) * win;
-        o1OutFwd = outputBuffer1.readBuffer(grainStart - output1ReadIdx) * win;
+        o1OutRev = outputBuffer.readBuffer(grainStart - currentOutputSize + output1ReadIdx + 1) * win;
+        o1OutFwd = outputBuffer.readBuffer(grainStart - output1ReadIdx) * win;
         output1ReadIdx++;
     }
     auto o1Out = (playbackDir == PlaybackDirection::REVERSE ? o1OutRev : o1OutFwd);
@@ -96,29 +96,30 @@ float GranularPitchShifter::processOutputBuffers(float modulation, bool triggerS
     {
         auto win = windowFunc(output2ReadIdx, currentOutputSize, overlapWidth);
         auto grainStart = output2StretchMultiplier * currentOutputSize + output2ReadOffset;
-        o2OutRev = outputBuffer2.readBuffer(grainStart - currentOutputSize + output2ReadIdx + 1) * win;
-        o2OutFwd = outputBuffer2.readBuffer(grainStart - output2ReadIdx) * win;
+        o2OutRev = outputBuffer.readBuffer(grainStart - currentOutputSize + output2ReadIdx + 1) * win;
+        o2OutFwd = outputBuffer.readBuffer(grainStart - output2ReadIdx) * win;
         output2ReadIdx++;
     }
     auto o2Out = (playbackDir == PlaybackDirection::REVERSE || playbackDir == PlaybackDirection::ALTERNATE ? o2OutRev : o2OutFwd);
     
     auto sumOut = o1Out + o2Out;
     
-    sumOut = fdbkLpf.processSample(sumOut);
-    
     if (toneType == ToneType::ANALOG)
     {
         sumOut = softClipper(sumOut);
         sumOut = ANALOG_POST_DEL_LOOP_GAIN * psBandpass.processSample(sumOut);
     }
-    sumOut = fdbkHpf.processSample(sumOut);
-
-    return sumOut;
+    sumOut = fdbkLpf.processSample(sumOut);
+    // sumOut = fdbkHpf.processSample(sumOut);
+    
+    modulationBuffer.writeBuffer(sumOut);
+    
+    return modulationBuffer.readBuffer(1.0f + modulation_smpls, true);
 }
 
-float GranularPitchShifter::processPostDelay(float x)
+float GranularPitchShifter::processPostDelay(float x, float modulation_smpls)
 {
-    auto delayLineOut = postDelayBuffer.readBuffer(currentInputSize);
+    auto delayLineOut = postDelayBuffer.readBuffer(currentInputSize + modulation_smpls);
     auto fb = feedback.getNextValue();
     
     if (toneType == ToneType::ANALOG)
@@ -137,9 +138,9 @@ float GranularPitchShifter::processPostDelay(float x)
 float GranularPitchShifter::processSample(float x, float modulation, bool triggerStrech)
 {
     auto outputBuffersOut = processOutputBuffers(modulation, triggerStrech);
-    auto y = processPostDelay(outputBuffersOut);
+    auto y = processPostDelay(outputBuffersOut, modulation);
     
-    writeInputBuffer(x, outputBuffersOut);
+    writeInputBuffer(x, fdbkHpf.processSample(outputBuffersOut));
     
     return y;
 }
@@ -163,8 +164,7 @@ inline void GranularPitchShifter::resample(float inputSize, int outputSize, floa
             y = cubicInterpolation(y0, y1, y2, y3, phasor);
         }
         
-        outputBuffer1.writeBuffer(y);
-        outputBuffer2.writeBuffer(y);
+        outputBuffer.writeBuffer(y);
         phasor += factor;
         while (phasor >= 1.0f)
         {

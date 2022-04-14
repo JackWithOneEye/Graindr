@@ -11,21 +11,21 @@ public:
     
     void reset(float sampleRate)
     {
-        ps1.reset(sampleRate);
-        ps2.reset(sampleRate);
+        fs = sampleRate;
         
-        ps1InBalance.reset(sampleRate, 0.1f);
-        ps2InBalance.reset(sampleRate, 0.1f);
-        ps12OutBalance.reset(sampleRate, 0.1f);
+        ps1.reset(fs);
+        ps2.reset(fs);
         
-        lfoPhaseShift.reset(sampleRate, 0.1f);
-        lfo.reset(sampleRate);
+        ps1InBalance.reset(fs, 0.1f);
+        ps2InBalance.reset(fs, 0.1f);
+        ps12OutBalance.reset(fs, 0.1f);
         
-        preDetectorFilter.reset(sampleRate);
-        preDetectorFilter.setParameters(1500.0f, 0.707f, false, false, 0.0f, 0.0f, 0.0f, 1.0f, false);
-        envelopeDetector.reset(sampleRate);
-        envelopeDetector.setParams(DetectionMode::RMS, 1.5f, 5.0f, false);
-        noteOn = false;
+        lfoPhaseShift.reset(fs, 0.1f);
+        lfo.reset(fs);
+        maxModDepth_smpls = MAX_MOD_DEPTH_SECS * fs;
+        
+        resetEnvelopeDetectorBlock();
+        envelopeDetectorActive = ps1.isStreching() || ps2.isStreching();
     }
     
     void processBlock(float* buffer, const int numSamples)
@@ -34,35 +34,37 @@ public:
         {
             auto x = buffer[n];
             
-            auto envlpIn = preDetectorFilter.processSample(x);
-            auto envlpOut = envelopeDetector.processSample(envlpIn);
-            auto delta = envlpOut.envelope - TRACKING_THRESHOLD;
-            float modVal = 0.0f;
-            if (delta > 0)
-                modVal = jlimit(0.0f, 1.0f, delta * TRACKING_SENSITIVITY);
-            
             bool triggerStrech = false;
-            if (!noteOn && modVal >= 0.001f)
+            updateEnvelopeDetectorState(ps1.isStreching() || ps2.isStreching());
+            if (envelopeDetectorActive)
             {
-                noteOn = true;
-                triggerStrech = true;
+                auto envlpIn = preDetectorFilter.processSample(x);
+                auto envlpOut = envelopeDetector.processSample(envlpIn);
+                auto delta = envlpOut.envelope - TRACKING_THRESHOLD;
+                float modVal = 0.0f;
+                if (delta > 0)
+                    modVal = jlimit(0.0f, 1.0f, delta * TRACKING_SENSITIVITY);
+                
+                if (!noteOn && modVal >= 0.001f)
+                {
+                    noteOn = true;
+                    triggerStrech = true;
+                }
+                else if (noteOn && modVal < 0.001f)
+                {
+                    noteOn = false;
+                }
             }
-            else if (noteOn && modVal < 0.001f)
-            {
-                noteOn = false;
-            }
-            
-            // auto mod = modVal * (maxValue - minValue) + minValue;
-            
-            auto lfoOut = lfo.getNextSample(lfoPhaseShift.getNextValue());
+                        
+            auto modulation_smpls = lfo.getNextSample(lfoPhaseShift.getNextValue()) * maxModDepth_smpls;
             
             // PS 1 process
-            auto ps1OutputBuffersOut = ps1.processOutputBuffers(lfoOut, triggerStrech);
-            auto ps1PostDelOut = ps1.processPostDelay(ps1OutputBuffersOut);
+            auto ps1OutputBuffersOut = ps1.processOutputBuffers(modulation_smpls, triggerStrech);
+            auto ps1PostDelOut = ps1.processPostDelay(ps1OutputBuffersOut, modulation_smpls);
             
             // PS 2 process
-            auto ps2OutputBuffersOut = ps2.processOutputBuffers(lfoOut, triggerStrech);
-            auto ps2PostDelOut = ps2.processPostDelay(ps2OutputBuffersOut);
+            auto ps2OutputBuffersOut = ps2.processOutputBuffers(modulation_smpls, triggerStrech);
+            auto ps2PostDelOut = ps2.processPostDelay(ps2OutputBuffersOut, modulation_smpls);
 
             // PS 1 write
             auto ps1InBal = ps1InBalance.getNextValue();
@@ -104,6 +106,10 @@ private:
     static constexpr float TRACKING_THRESHOLD = 0.001f;
     static constexpr float TRACKING_SENSITIVITY = 0.25f;
     
+    float fs = 44100.0f;
+    
+    float maxModDepth_smpls = MAX_MOD_DEPTH_SECS * 44100.0f;
+    
     GranularPitchShifter ps1;
     GranularPitchShifter ps2;
     
@@ -111,13 +117,40 @@ private:
     SmoothedVal ps2InBalance = 0.0f;
     SmoothedVal ps12OutBalance = 0.5f;
     
+    bool envelopeDetectorActive = false;
+    
     FastMathLFO lfo;
     SmoothedVal lfoPhaseShift = 0.0f;
     
     StaticVASVFilter preDetectorFilter;
-    
     EnvelopeDetector envelopeDetector;
     bool noteOn = false;
+    
+    void resetEnvelopeDetectorBlock()
+    {
+        preDetectorFilter.reset(fs);
+        preDetectorFilter.setParameters(1500.0f, 0.707f, false, false, 0.0f, 0.0f, 0.0f, 1.0f, false);
+        envelopeDetector.reset(fs);
+        envelopeDetector.setParams(DetectionMode::RMS, 1.5f, 5.0f, false);
+        noteOn = false;
+    }
+    
+    void updateEnvelopeDetectorState(bool activate)
+    {
+        if (envelopeDetectorActive == activate)
+            return;
+        
+        // deactivate
+        if (envelopeDetectorActive && !activate)
+        {
+            envelopeDetectorActive = false;
+            return;
+        }
+        
+        // activate
+        resetEnvelopeDetectorBlock();
+        envelopeDetectorActive = true;
+    }
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PitchShifterContainer)
 };

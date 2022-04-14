@@ -14,15 +14,11 @@ constexpr float MIN_PITCH_SHIFT_FACTOR = 0.5f;
 constexpr float MAX_PITCH_SHIFT_FACTOR = 2.0f;
 
 constexpr float MIN_LFO_FREQ = 0.02f;
-constexpr float MAX_LFO_FREQ = 20.0f;
+constexpr float MAX_LFO_FREQ = 10.0f;
+
+constexpr float MAX_MOD_DEPTH_SECS = 0.03f;
 
 inline static float pitchShift2Factor(float shift) { return std::powf(2.0f, shift / 12.0f); }
-
-inline static void resizeAndInitBuffer(std::vector<float>& v, int size)
-{
-    v.resize(size);
-    std::fill(v.begin(), v.end(), 0.0f);
-}
 
 enum PlaybackDirection
 {
@@ -42,6 +38,8 @@ class GranularPitchShifter
 public:
     GranularPitchShifter() {}
     
+    bool isStreching() { return stretch > 1; }
+    
     void reset(float sampleRate)
     {
         fs = sampleRate;
@@ -49,9 +47,9 @@ public:
         int maxOutputBufferSize = ((int) fs) * MAX_GRAIN_SIZE_SEC;
         int maxInputBufferSize = ((int) MAX_PITCH_SHIFT_FACTOR) * maxOutputBufferSize;
         inputBuffer.createCircularBuffer(maxInputBufferSize * 2);
-        outputBuffer1.createCircularBuffer(maxOutputBufferSize * 4);
-        outputBuffer2.createCircularBuffer(maxOutputBufferSize * 4);
-        postDelayBuffer.createCircularBuffer(maxOutputBufferSize * 2);
+        outputBuffer.createCircularBuffer(maxOutputBufferSize * 4);
+        modulationBuffer.createCircularBuffer(((int) fs) * MAX_MOD_DEPTH_SECS * 2);
+        postDelayBuffer.createCircularBuffer(maxOutputBufferSize);
         
         writtenSmplsCtr = 0;
         stretchCtr = 0;
@@ -65,7 +63,6 @@ public:
         output2ReadOffset = 0;
         output2StretchMultiplier = 1;
         output2TriggerStretchOnNext = false;
-//        currentStride = -1;
         
         grainSize_smpls.reset(fs, 1.0f);
         pitchShiftFactor.reset(fs, SMOOTHED_VAL_RAMP_LEN_SEC);
@@ -78,11 +75,11 @@ public:
         psBandpass.reset(fs);
         psBandpass.setParameters(725.0f, 0.33f, false, false, 0.0f, 1.0f, 0.0f, 0.0f, false);
         
-        postDelayBandpass.reset(fs);
-        postDelayBandpass.setParameters(725.0f, 0.33f, false, false, 0.0f, 1.0f, 0.0f, 0.0f, false);
-        
         fdbkHpf.reset(fs);
         fdbkHpf.setParameters(100.0f, 0.707f, false, false, 0.0f, 0.0f, 1.0f, 0.0f, false);
+        
+        postDelayBandpass.reset(fs);
+        postDelayBandpass.setParameters(725.0f, 0.33f, false, false, 0.0f, 1.0f, 0.0f, 0.0f, false);
         
         postDelayHpf.reset(fs);
         postDelayHpf.setParameters(100.0f, 0.707f, false, false, 0.0f, 0.0f, 1.0f, 0.0f, false);
@@ -121,9 +118,8 @@ public:
     
     float processSample(float x, float modulation = 0.0f, bool triggerStrech = false);
     
-    
-    float processOutputBuffers(float modulation, bool triggerStrech);
-    float processPostDelay(float x);
+    float processOutputBuffers(float modulation_smpls, bool triggerStrech);
+    float processPostDelay(float x, float modulation_smpls);
     void writeInputBuffer(float x, float feedbackIn);
     
 private:
@@ -163,8 +159,8 @@ private:
     int currentOutputSize = 0;
     
     CircularBuffer inputBuffer;
-    CircularBuffer outputBuffer1;
-    CircularBuffer outputBuffer2;
+    CircularBuffer outputBuffer;
+    CircularBuffer modulationBuffer;
     CircularBuffer postDelayBuffer;
     
     StaticVASVFilter psBandpass;
