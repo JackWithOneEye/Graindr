@@ -3,7 +3,6 @@
 #include <JuceHeader.h>
 #include "Utils.h"
 #include "VASVFilter.h"
-#include "DelayAPF.h"
 
 constexpr int MAX_GRAIN_SIZE_SEC = 1;
 
@@ -169,8 +168,6 @@ private:
     StaticVASVFilter postDelayHpf;
     
     VASVFilter fdbkLpf;
-    
-//    NestedDelayAPF nDelayApf;
     
     inline float softClipper(float x)
     {

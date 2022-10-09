@@ -156,7 +156,7 @@ inline void GranularPitchShifter::resample(float inputSize, int outputSize, floa
         if (phasor != 0.0f)
         {
             float y0 = inputBuffer.readBuffer(delay + 1.0f);
-            float y1 = y; // inputBuffer.readBuffer(delay)
+            float y1 = y;
             float y2 = inputBuffer.readBuffer(delay - 1.0f);
             float y3 = inputBuffer.readBuffer(delay - 2.0f);
             

@@ -140,6 +140,7 @@ public:
     
     void reset(float sampleRate)
     {
+        fs = sampleRate;
         depth.reset(sampleRate, 0.05f);
         rshState.reset(sampleRate, 0.001f);
         resetPhase();

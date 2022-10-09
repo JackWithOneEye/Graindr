@@ -13,10 +13,6 @@
               file="Source/EnvelopeDetector.h"/>
         <FILE id="hDfeCM" name="Utils.h" compile="0" resource="0" file="Source/Utils.h"/>
       </GROUP>
-      <GROUP id="{CB9AE56C-9786-51DC-09BF-6D1B0BA4A536}" name="Effects">
-        <FILE id="eMZYkt" name="DelayAPF.cpp" compile="1" resource="0" file="Source/DelayAPF.cpp"/>
-        <FILE id="TuhA1Y" name="DelayAPF.h" compile="0" resource="0" file="Source/DelayAPF.h"/>
-      </GROUP>
       <FILE id="uZwvD4" name="VASVFilter.cpp" compile="1" resource="0" file="Source/VASVFilter.cpp"/>
       <FILE id="dNEx7S" name="VASVFilter.h" compile="0" resource="0" file="Source/VASVFilter.h"/>
       <FILE id="rAJSXW" name="PitchShifterContainer.h" compile="0" resource="0"
